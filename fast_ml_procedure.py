@@ -146,9 +146,13 @@ def model_param_tuning(train_x, train_y, test_x, test_y, scoring='roc_auc'):
     feature_importance = pd.DataFrame(grid_search_clf.best_estimator_.coef_.reshape(-1, 1),
                                       columns=['Feature_importance'],
                                       index=train_x.columns)
+    all_importances = abs(feature_importance.loc[:, 'Feature_importance']).sum()
+    # 特征重要型占比
+    feature_importance.loc[:, "feature_importance_percent"] = feature_importance.loc[:,
+                                                              'Feature_importance'] / all_importances
     print("{:*^30}".format("特征重要性排序"))
     print(feature_importance.sort_values(by='Feature_importance', ascending=False))
-    feature_importance.sort_values(by='Feature_importance', ascending=False).plot(kind='barh')
+    feature_importance.Feature_importance.sort_values(ascending=False).plot(kind='barh')
     plt.show()
 
     print("{:*^30}".format("最佳模型评估效果"))
