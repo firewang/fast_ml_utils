@@ -14,6 +14,7 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import cross_val_score
@@ -108,7 +109,8 @@ def basic_model_selection(basic_models=None, x=None, y=None, scoring='roc_auc', 
                       AdaBoostClassifier(),
                       AdaBoostClassifier(learning_rate=0.5),
                       AdaBoostClassifier(base_estimator=linear_model.LogisticRegression()),
-                      RandomForestClassifier()]
+                      RandomForestClassifier(),
+                      GradientBoostingClassifier()]
     else:
         all_models = basic_models
     cv_scores = []
@@ -122,7 +124,7 @@ def basic_model_selection(basic_models=None, x=None, y=None, scoring='roc_auc', 
     return cv_score_df
 
 
-def model_param_tuning(train_x, train_y, test_x, test_y, scoring='roc_auc'):
+def model_param_tuning_lr(train_x, train_y, test_x, test_y, scoring='roc_auc'):
     """模型调参"""
     grid_search_param = [{
         'penalty': ["l1", 'l2'],
@@ -163,6 +165,43 @@ def model_param_tuning(train_x, train_y, test_x, test_y, scoring='roc_auc'):
     return grid_search_clf.best_estimator_
 
 
+def model_param_tuning_gbdt(train_x, train_y, test_x, test_y, scoring='roc_auc'):
+    """GBDT模型调参"""
+    grid_search_param = [{
+        'learning_rate': [0.001, 0.01, 0.1, 0.3, 0.5, 0.8],
+        'n_estimators': range(20, 101, 10),
+        'max_depth': range(3, 22, 2),
+        'min_samples_split': range(100, 801, 200),
+        'min_samples_leaf': range(60, 101, 10)
+    },
+    ]
+    grid_search_clf = GridSearchCV(GradientBoostingClassifier(tol=1e-6),
+                                   grid_search_param,
+                                   cv=10,
+                                   n_jobs=-1,
+                                   scoring=scoring)
+    grid_search_clf.fit(train_x, train_y)
+    print(grid_search_clf.best_params_)
+    feature_importance = pd.DataFrame(grid_search_clf.best_estimator_.feature_importances_.reshape(-1, 1),
+                                      columns=['Feature_importance'],
+                                      index=train_x.columns)
+    all_importances = abs(feature_importance.loc[:, 'Feature_importance']).sum()
+    # 特征重要型占比
+    feature_importance.loc[:, "feature_importance_percent"] = feature_importance.loc[:,
+                                                              'Feature_importance'] / all_importances
+    print("{:*^30}".format("特征重要性排序"))
+    print(feature_importance.sort_values(by='Feature_importance', ascending=False))
+    feature_importance.Feature_importance.sort_values(ascending=False).plot(kind='barh')
+    plt.show()
+
+    print("{:*^30}".format("最佳模型评估效果"))
+    print(cr(test_y, grid_search_clf.best_estimator_.predict(test_x)))
+
+    print("{:*^30}".format("最佳模型auc值"))
+    print(roc_auc_score(test_y, grid_search_clf.best_estimator_.predict_proba(test_x)[:, 1]))
+    return grid_search_clf.best_estimator_
+
+
 if __name__ == '__main__':
     data = get_data("train_set.csv")
     data.pop("ID")
@@ -180,7 +219,8 @@ if __name__ == '__main__':
     basic_model_selection(basic_models=None, x=train_x, y=train_y, scoring='accuracy', cv=10)
 
     # 调参
-    best_est = model_param_tuning(train_x, train_y, test_x, test_y)
+    # best_est = model_param_tuning_lr(train_x, train_y, test_x, test_y)
+    best_est = model_param_tuning_gbdt(train_x, train_y, test_x, test_y)
 
     pred_label = pd.Series(best_est.predict_proba(test_df)[:, 1], name='pred')
     pred_df = pd.concat([test_id, pred_label], axis=1)
