@@ -48,6 +48,11 @@ def get_data(filename, filepath=os.getcwd()):
 def split_data(df, label_col_name, test_size=0.2):
     label = df.pop(label_col_name)
     train_x, test_x, train_y, test_y = train_test_split(df, label, random_state=11, stratify=label, test_size=test_size)
+    # 重构row index
+    train_x.reset_index(drop=True, inplace=True)
+    test_x.reset_index(drop=True, inplace=True)
+    train_y.reset_index(drop=True, inplace=True)
+    test_y.reset_index(drop=True, inplace=True)
     return train_x, test_x, train_y, test_y
 
 
