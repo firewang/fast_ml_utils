@@ -157,6 +157,12 @@ def model_param_tuning_lr(train_x, train_y, test_x, test_y, scoring='roc_auc'):
     # 特征重要型占比
     feature_importance.loc[:, "feature_importance_percent"] = feature_importance.loc[:,
                                                               'Feature_importance'] / all_importances
+    # 百分比都表示为 正 值
+    feature_importance.loc[:, 'normalized_importance'] = feature_importance.feature_importance_percent.apply(abs)
+    # 输出百分比格式列
+    feature_importance.loc[:, 'normalized_importance_percentile'] = feature_importance.normalized_importance.apply(
+        lambda x: "{:.2%}".format(x)
+    )
     print("{:*^30}".format("特征重要性排序"))
     print(feature_importance.sort_values(by='Feature_importance', ascending=False))
     feature_importance.Feature_importance.sort_values(ascending=False).plot(kind='barh')
@@ -194,6 +200,12 @@ def model_param_tuning_gbdt(train_x, train_y, test_x, test_y, scoring='roc_auc')
     # 特征重要型占比
     feature_importance.loc[:, "feature_importance_percent"] = feature_importance.loc[:,
                                                               'Feature_importance'] / all_importances
+    # 百分比都表示为 正 值
+    feature_importance.loc[:, 'normalized_importance'] = feature_importance.feature_importance_percent.apply(abs)
+    # 输出百分比格式列
+    feature_importance.loc[:, 'normalized_importance_percentile'] = feature_importance.normalized_importance.apply(
+        lambda x: "{:.2%}".format(x)
+    )
     print("{:*^30}".format("特征重要性排序"))
     print(feature_importance.sort_values(by='Feature_importance', ascending=False))
     feature_importance.Feature_importance.sort_values(ascending=False).plot(kind='barh')
