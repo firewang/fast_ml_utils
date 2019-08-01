@@ -65,11 +65,12 @@ def my_scaler(scaler_obj, training_x, testing_x=None, cols=None, **kwargs):
         new_cols.extend(cols)
         # 将转换后的列合并回 df
         training_x = pd.merge(training_x, train_x_transformed, left_index=True, right_index=True)
-        test_x_transformed = pd.DataFrame(scaler_obj.transform(testing_x.loc[:, cols]), columns=cols)
-        # 删除原始未转换列
-        testing_x.drop(columns=cols, inplace=True)
-        # 将转换后的列合并回 df
-        testing_x = pd.merge(testing_x, test_x_transformed, left_index=True, right_index=True)
+        if testing_x is not None:
+            test_x_transformed = pd.DataFrame(scaler_obj.transform(testing_x.loc[:, cols]), columns=cols)
+            # 删除原始未转换列
+            testing_x.drop(columns=cols, inplace=True)
+            # 将转换后的列合并回 df
+            testing_x = pd.merge(testing_x, test_x_transformed, left_index=True, right_index=True)
     else:
         # 如果未传入需要缩放的列， 则对所有列进行作用
         try:
