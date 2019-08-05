@@ -6,6 +6,7 @@
 
 import re
 import pandas as pd
+from tqdm import tqdm
 from sklearn.pipeline import Pipeline
 from sklearn.base import TransformerMixin
 
@@ -101,7 +102,7 @@ def my_polynomial(scaler_obj, training_x, testing_x=None, cols=None, **kwargs):
      testing_x  测试集df
      cols 需要转换的列list
      **kwargs额外参数 : include_bias是否包含偏差列， interaction_only 是否只包含乘积，degree多项式阶数"""
-    scaler_name = scaler_obj.__class__.__name__
+    # scaler_name = scaler_obj.__class__.__name__
     if kwargs:
         params = scaler_obj.get_params()
         # 更新scaler的参数
@@ -146,7 +147,50 @@ def my_polynomial(scaler_obj, training_x, testing_x=None, cols=None, **kwargs):
     return scaler_obj, training_x, testing_x
 
 
+# count 特征生成方法
+def feature_count(data, group_features):
+    """离散特征，data(df)根据group_features分组(列名组成的列表)，得到分组的计数值"""
+    feature_name = "count_{}".format("_".join(group_features))  # 生成原单列特征名为合并特征名称
+    temp_df = data.groupby(group_features).size().reset_index().rename(columns={0: feature_name})
+    data = data.merge(temp_df, 'left', on=group_features)  # 合并count 计数特征
+    return data, feature_name
+
+
+# 分组 特征生成方法
+def cross_generate_features(data, sparse_feature, dense_feature):
+    """data: df ， sparse_feature：离散特征， dense_feature：连续特征
+    基于离散特征分组，实现 离散+离散 ，离散+连续 --》 交叉特征（数值型）生成"""
+    def get_new_columns(feature_name, aggs):
+        """交叉特征，在同一个离散变量值下，其他特征的统计特征，名称列表构建"""
+        cross_feature_name_list = []
+        for k in aggs.keys():
+            # 遍历其他每一个特征k
+            for agg in aggs[k]:
+                # 从aggs字典获取特征k的aggregation func
+                if str(type(agg)) == "<class 'function'>":
+                    cross_feature_name_list.append(feature_name + '_' + k + '_' + 'other')
+                else:
+                    # 生成交叉特征的名称：离散特征_其他特征_聚合函数
+                    cross_feature_name_list.append(f'{feature_name}_{k}_{agg}')
+        return cross_feature_name_list
+
+    for discrete_feature in tqdm(sparse_feature):
+        # 遍历每一个离散特征discrete_feature, 对于离散特征添加 count统计，连续特征添加统计特征
+        aggs_func_dict = {}  # 每个特征的aggreagtion func字典
+        for s in sparse_feature:
+            aggs_func_dict[s] = ['count', 'nunique']
+        for den in dense_feature:
+            aggs_func_dict[den] = ['mean', 'max', 'min', 'std']
+        aggs_func_dict.pop(discrete_feature)  # 剔除当前特征
+        # 将数据按当前特征分组，交叉特征进行aggregation
+        temp = data.groupby(discrete_feature).agg(aggs_func_dict).reset_index()
+        temp.columns = [discrete_feature] + get_new_columns(discrete_feature, aggs_func_dict)  # 获取交叉特征的名称列表
+        data = pd.merge(data, temp, on=discrete_feature, how='left')  # 合并交叉特征
+    return data
+
+
 def my_pipeline(names, models):
+    """names: models的别名"""
     my_pipe_line = Pipeline([(name, model) for name, model in zip(names, models)])
     return my_pipe_line
 
