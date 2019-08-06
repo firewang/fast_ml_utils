@@ -7,9 +7,10 @@
 from math import sqrt, ceil
 import numpy as np
 from sklearn.model_selection import learning_curve
+from sklearn.model_selection import validation_curve
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+from typing import Tuple
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 解决中文显示问题-设置字体为黑体
 plt.rcParams['axes.unicode_minus'] = False  # 解决保存图像是负号'-'显示为方块的问题
 # sns.set(font="SimHei")
@@ -121,6 +122,37 @@ def plot_learning_curve(estimator, title, x, y, ylim=None, cv=5, n_jobs=1, train
             validation_scores_mean[-1] - validation_scores_std[-1])) / 2
     diff = (train_scores_mean[-1] + train_scores_std[-1]) - (validation_scores_mean[-1] - validation_scores_std[-1])
     return midpoint, diff
+
+
+def plot_validation_curve(estimator, x, y, param_name: str, param_range=range(1, 5), cv: int = 5,
+                          scoring: str = "accuracy", y_lim: Tuple[float, float] = (0.0, 1.1)):
+    """绘制验证曲线，判断单个超参数的取值范围"""
+    # param_range = np.logspace(-6, -1, 5)
+    train_scores, test_scores = validation_curve(
+        estimator, x, y, param_name=param_name, param_range=param_range,
+        cv=cv, scoring=scoring, n_jobs=-1)
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+
+    plt.title(f"Validation Curve with {estimator.__class__.__name__}")
+    plt.xlabel(param_name)
+    plt.ylabel(scoring)
+    plt.ylim(*y_lim)
+    lw = 2
+    plt.semilogx(param_range, train_scores_mean, label="Training score",
+                 color="darkorange", lw=lw)
+    plt.fill_between(param_range, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.2,
+                     color="darkorange", lw=lw)
+    plt.semilogx(param_range, test_scores_mean, label="Cross-validation score",
+                 color="navy", lw=lw)
+    plt.fill_between(param_range, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.2,
+                     color="navy", lw=lw)
+    plt.legend(loc="best")
+    plt.show()
 
 
 if __name__ == '__main__':
