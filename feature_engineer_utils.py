@@ -7,6 +7,10 @@
 import re
 import numpy as np
 import pandas as pd
+import requests
+import json
+import time
+import random
 from tqdm import tqdm
 from sklearn.pipeline import Pipeline
 from sklearn.base import TransformerMixin
@@ -227,6 +231,32 @@ def reduce_mem_usage(df, verbose=True):
         print('Mem. usage decreased to {:5.2f} Mb ({:.1f}% reduction)'.format(
             end_mem, 100 * (start_mem - end_mem) / start_mem))
     return df
+
+
+def get_day_type(start_date, end_date):
+    """根据日期字符串 2019-01-01 区间，获得当天日期类型
+    正常工作日 0, 法定节假日 1, 节假日调休补班 2，休息日（周末）3
+    return df ["day_time", 'day_str', "day_type","day_type_zh", 'weekday']
+    日期，日期字符串， 日期类型ID，日期类型中文，星期几"""
+    def request_day_type(day_str):
+        base_url = 'http://api.goseek.cn/Tools/holiday?date='
+        # API返回值{"code":10000,"data":1} ，支持2017年及以后年份
+        day_type_data = json.loads(requests.get(f"{base_url}{day_str}").text, encoding='utf-8')['data']
+        time.sleep(random.random())
+        return day_type_data
+
+    time_series = pd.date_range(start=start_date, end=end_date, freq='D').to_series(name='day_date').reset_index(
+        drop=True)
+    time_str = time_series.apply(lambda x: x.strftime('%Y%m%d'))
+    day_type = time_str.apply(request_day_type)
+
+    result = pd.concat([time_series, time_str, day_type], axis=1, ignore_index=True)
+    result.columns = ["day_time", 'day_str', "day_type"]  # 重置列名，[日期，日期字符串，当天类型]
+    day_type_map = {0: "工作日", 1: "法定节假日", 2: "节假日调休", 3: "周末"}
+    result.loc[:, 'day_type_zh'] = result.day_type.map(day_type_map)  # 将日期类型映射到中文
+    result.loc[:, "weekday"] = result.day_time.apply(lambda day: day.isoweekday())  # 得到当天是星期几
+    result.to_excel(f"day_type_{start_date}_{end_date}.xlsx", index=False)
+    return result
 
 
 if __name__ == '__main__':
