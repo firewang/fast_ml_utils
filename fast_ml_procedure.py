@@ -6,6 +6,8 @@
 # @note    : 模型调参部分抽离学习器，评估方法，参数字典
 
 import os
+import time
+
 import numpy as np
 import pandas as pd
 from sklearn import linear_model
@@ -43,6 +45,15 @@ def get_data(filename, filepath=os.getcwd()):
         return df
     else:
         raise FileNotFoundError
+
+
+def write_data(df, filedir, filename, index=False):
+    """输出 df 到文件"""
+    if not os.path.exists(filedir):
+        os.mkdir(filedir)
+    current_time = time.strftime('%Y%m%d%H%M%S', time.localtime())
+    filename = f'{filename}_{current_time}.csv'
+    df.to_csv(os.path.join(filedir, filename), index=index, header=True, encoding='gbk')
 
 
 def split_data(df, label_col_name, test_size=0.2):
@@ -126,6 +137,7 @@ def basic_model_selection(basic_models=None, x=None, y=None, scoring='roc_auc', 
     cv_score_df.index = [f"cv_{cv_round + 1}" for cv_round in cv_score_df.index]  # index命名为cv_{index_round}
     cv_score_df = pd.concat([cv_score_df, cv_score_df.describe()], axis=0)  # 加入各轮cv的scores的统计信息
     print(cv_score_df)
+    write_data(cv_score_df,filedir=os.getcwd(), filename='basic_model_selection', index=True)
     return cv_score_df
 
 
