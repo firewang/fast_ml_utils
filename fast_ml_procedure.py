@@ -21,6 +21,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import classification_report as cr
+from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -185,6 +186,10 @@ def model_param_tuning_lr(train_x, train_y, test_x, test_y, scoring='roc_auc'):
 
     print("{:*^30}".format("最佳模型auc值"))
     print(roc_auc_score(test_y, grid_search_clf.best_estimator_.predict_proba(test_x)[:, 1]))
+
+    print("{:*^30}".format("lr最佳accuracy"))
+    print(accuracy_score(test_y, grid_search_clf.best_estimator_.predict(test_x)))
+    print(grid_search_clf.best_score_)
     return grid_search_clf.best_estimator_
 
 
@@ -228,6 +233,10 @@ def model_param_tuning_gbdt(train_x, train_y, test_x, test_y, scoring='roc_auc')
 
     print("{:*^30}".format("最佳模型auc值"))
     print(roc_auc_score(test_y, grid_search_clf.best_estimator_.predict_proba(test_x)[:, 1]))
+
+    print("{:*^30}".format("gbdt最佳accuracy"))
+    print(accuracy_score(test_y, grid_search_clf.best_estimator_.predict(test_x)))
+    print(grid_search_clf.best_score_)
     return grid_search_clf.best_estimator_
 
 
