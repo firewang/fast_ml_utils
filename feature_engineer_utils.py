@@ -64,7 +64,8 @@ def my_scaler(scaler_obj, training_x, testing_x=None, cols=None, **kwargs):
             scaler_obj.set_params(**params)
 
     if cols is not None:
-        train_x_transformed = pd.DataFrame(scaler_obj.fit_transform(training_x.loc[:, cols]), columns=cols)
+        train_x_transformed = pd.DataFrame(scaler_obj.fit_transform(training_x.loc[:, cols]), columns=cols,
+                                           index=training_x.index)
         # 删除原始未转换列
         training_x.drop(columns=cols, inplace=True)
         # 构建新的列名index
@@ -73,7 +74,8 @@ def my_scaler(scaler_obj, training_x, testing_x=None, cols=None, **kwargs):
         # 将转换后的列合并回 df
         training_x = pd.merge(training_x, train_x_transformed, left_index=True, right_index=True)
         if testing_x is not None:
-            test_x_transformed = pd.DataFrame(scaler_obj.transform(testing_x.loc[:, cols]), columns=cols)
+            test_x_transformed = pd.DataFrame(scaler_obj.transform(testing_x.loc[:, cols]), columns=cols,
+                                              index=testing_x.index)
             # 删除原始未转换列
             testing_x.drop(columns=cols, inplace=True)
             # 将转换后的列合并回 df
