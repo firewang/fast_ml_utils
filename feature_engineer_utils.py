@@ -154,6 +154,67 @@ def my_polynomial(scaler_obj, training_x, testing_x=None, cols=None, **kwargs):
     return scaler_obj, training_x, testing_x
 
 
+def get_feature_importance(clfs, col_names=None, feature=None, feature_nums=30, split_sheets=True, if_print=False):
+    """
+    输出模型得到的特征重要性排序后的excel文件
+    :param clfs: 模型
+    :param col_names: 为 特征重要性列 设置的列名称
+    :param feature: 特征名称列表
+    :param feature_nums: 保留的特征数量，按重要性从高到低
+    :param split_sheets: 是否将不同模型的结果保存到不同sheet
+    :param if_print: 是否打印， 便于单模型使用
+    :return:
+    """
+    filename = "feature_importances.xlsx"
+    feature_writer = pd.ExcelWriter(filename)
+    if col_names is None:
+        col_names = [clf.__class__.__name__ for clf in clfs]
+        counter = Counter(col_names)
+        for index, clf_name in enumerate(col_names):
+            if counter[clf_name] > 1:
+                col_names[index] = f"{clf_name}_{counter[clf_name]}"
+                counter[clf_name] -= 1
+    for clf, col_name in zip(clfs, col_names):
+        for attr in ["feature_importances_", "coef_"]:
+            if hasattr(clf, attr):
+                feature_importance = pd.DataFrame(getattr(clf, attr).reshape(-1, 1),
+                                                  columns=[col_name],
+                                                  index=feature)
+                all_importances = abs(feature_importance.loc[:, col_name]).sum()
+                # 特征重要型占比
+                feature_importance.loc[:, f"{col_name}_pct"] = feature_importance.loc[:, col_name] / all_importances
+                # 百分比都表示为 正 值
+                feature_importance.loc[:,
+                'normalized_importance'] = feature_importance.loc[:, f"{col_name}_pct"].apply(
+                    abs)
+                # 输出百分比格式列
+                feature_importance.loc[:,
+                'normalized_importance_percentile'] = feature_importance.normalized_importance.apply(
+                    lambda x: "{:.2%}".format(x)
+                )
+                cur_result = feature_importance.sort_values(by='normalized_importance', ascending=False).head(
+                    feature_nums)
+                if cur_result.shape[0]:
+                    cur_result.reset_index(drop=False, inplace=True)
+                    cur_result.to_excel(feature_writer, sheet_name=col_name, index=False)
+                    if if_print:
+                        print("{:*^30}".format(col_name))
+                        print(cur_result)
+    feature_writer.save()  # 保存各模型的特征重要性结果
+    # TODO 不同模型得到特征重要性排名差异处理
+    # TODO 增加shap
+
+    df_list = []
+    file = pd.ExcelFile(filename)
+    for sheet in file.sheet_names:
+        cur_df = pd.read_excel(file, sheet_name=sheet)
+        df_list.append(cur_df)
+    combine_df = pd.concat(df_list, axis=1)
+    if not split_sheets:
+        combine_df.to_excel(filename)
+    return combine_df  # 特征重要性 data frame
+
+
 # count 特征生成方法
 def feature_count(data, group_features):
     """离散特征，data(df)根据group_features分组(列名组成的列表)，得到分组的计数值"""
